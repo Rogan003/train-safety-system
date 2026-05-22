@@ -1,0 +1,144 @@
+package rules.forward;
+
+import com.ftn.sbnz.train.model.facts.TrainStatus;
+import com.ftn.sbnz.train.model.facts.Infrastructure;
+import com.ftn.sbnz.train.model.facts.MovementAuthority;
+import com.ftn.sbnz.train.model.facts.BrakingCurve;
+import com.ftn.sbnz.train.model.facts.Balise;
+import com.ftn.sbnz.train.model.facts.CriticalSafetyBreach;
+import com.ftn.sbnz.train.model.facts.Car;
+import com.ftn.sbnz.train.model.enums.DoorStatus;
+import com.ftn.sbnz.train.model.enums.WarningType;
+import com.ftn.sbnz.train.model.events.Warning;
+import com.ftn.sbnz.train.model.events.ServiceBrakeCommand;
+import com.ftn.sbnz.train.model.events.EmergencyBrakeCommand;
+
+
+rule "Rule 1: Antenna reads balise from Infrastructure and updates MA"
+    salience 100
+    when
+        $t: TrainStatus($pos: position)
+        $infra: Infrastructure($balises: balises)
+        $b: Balise(consumed == false, position <= $pos) from $balises
+        $ma: MovementAuthority()
+    then
+        $b.setConsumed(true);
+        modify($ma) {
+            setEoa($b.getNewEoa()),
+            setTargetSpeed($b.getNewTargetSpeed()),
+            setTimestamp(System.currentTimeMillis())
+        }
+        modify($infra) {
+            setCurrentBaliseId($b.getId())
+        }
+        System.out.println("[Rule 1] Balise " + $b.getId()
+            + " consumed at pos=" + $pos
+            + " -> EOA=" + $b.getNewEoa() + "m, vTarget=" + $b.getNewTargetSpeed() + "km/h");
+end
+
+// Rule 2 is templated
+
+rule "Rule 3: Overspeed warning"
+when
+    $bc: BrakingCurve($vw: vWarning)
+    $t:  TrainStatus($v: speed > $vw)
+    not Warning(type == WarningType.OVERSPEED)
+then
+    Warning w = new Warning(WarningType.OVERSPEED,
+        String.format("Overspeed: V=%.1f km/h > W=%.1f", $v, $vw));
+    insert(w);
+    System.out.println("[Rule 3] " + w.getMessage());
+end
+
+
+rule "Rule 3b: Clear overspeed warning once safely back under warning threshold"
+when
+    $w  : Warning(type == WarningType.OVERSPEED)
+    $bc : BrakingCurve($vw : vWarning)
+    $t  : TrainStatus(speed < ($vw * 0.9), $v : speed)
+then
+    delete($w);
+    System.out.println("[Rule 3b] Overspeed warning cleared (V=" + $v + ")");
+end
+
+
+rule "Rule 4: Service brake intervention on overspeed"
+    when
+        Warning(type == WarningType.OVERSPEED)
+        $bc : BrakingCurve($vsb : vServiceBrake)
+        $t : TrainStatus(
+            $v : speed > $vsb,
+            brake < 0.3
+        )
+        not ServiceBrakeCommand()
+    then
+        ServiceBrakeCommand cmd = new ServiceBrakeCommand(0.6,
+            "Rule 4: overspeed above SBD, driver did not brake");
+        insert(cmd);
+        System.out.println("[Rule 4] ServiceBrakeCommand issued (V=" + $v + " > SBD=" + $vsb + ")");
+end
+
+
+rule "Rule 4b: Clear service brake"
+    when
+        $bc : BrakingCurve($vsb : vServiceBrake)
+        TrainStatus(speed < ($vsb * 0.8))
+        $sbc: ServiceBrakeCommand(reason.matches("^Rule 4*"))
+    then
+        delete($sbc);
+        System.out.println("[Rule 6b] Speed normal — service brake cleared");
+end
+
+
+rule "Rule 5 Emergency brake on EBD breach"
+when
+    $bc: BrakingCurve($veb: vEmergencyBrake)
+    $t:  TrainStatus($v: speed > $veb)
+    not EmergencyBrakeCommand()
+then
+    EmergencyBrakeCommand cmd = new EmergencyBrakeCommand(
+        String.format("Rule 5: V=%.1f > EBD=%.1f", $v, $veb));
+    insert(cmd);
+    System.out.println("[Rule 5] EMERGENCY BRAKE — " + cmd.getReason());
+end
+
+
+rule "Rule 6: Doors open while moving creates CriticalSafetyBreach"
+    when
+        $t:  TrainStatus(speed > 0)
+        $c:  Car(doorStatus != DoorStatus.LOCKED, $cid: id)
+        not CriticalSafetyBreach(reason.matches("^Doors open.*"))
+    then
+        insert(new CriticalSafetyBreach("Doors open on car " + $cid));
+        System.out.println("[Rule 6] Critical breach: doors open on " + $cid);
+end
+
+
+rule "Rule 6b: Clear doors breach when all doors LOCKED"
+    when
+        $b:  CriticalSafetyBreach(reason.matches("^Doors open.*"))
+        not Car(doorStatus != DoorStatus.LOCKED)
+    then
+        delete($b);
+        System.out.println("[Rule 6b] All doors locked — breach cleared");
+end
+
+
+rule "Rule 7: Cut traction on critical breach"
+    when
+        CriticalSafetyBreach()
+        $t: TrainStatus(tractionActive == true)
+    then
+        modify($t) { setTractionActive(false), setThrottle(0.0) }
+        System.out.println("[Rule 7] Traction CUT due to critical safety breach");
+end
+
+
+rule "Rule 7b: Cut traction when any warning persists for more than 20s"
+    when
+        $w : Warning($wt: type) over window:time(20s)
+        $t: TrainStatus(tractionActive == true)
+    then
+        modify($t) { setTractionActive(false), setThrottle(0.0) }
+        System.out.println("[Rule 7b] Traction CUT — long-running warning " + $wt);
+end

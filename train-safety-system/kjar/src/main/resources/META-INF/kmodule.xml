@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kmodule xmlns="http://www.drools.org/xsd/kmodule"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <!--
+        Single kbase that contains ALL rule packages.
+        Stream processing mode is required because the CEP rules (Rules 11-14)
+        use sliding/length windows and temporal operators (after, over window:time).
+        The session is real-time so 30s SIFA windows behave realistically.
+    -->
+    <kbase name="trainKBase"
+           eventProcessingMode="stream"
+           packages="rules.forward, rules.accumulate, rules.cep, rules.backward">
+        <ksession name="trainKsession" type="stateful" clockType="realtime" default="true"/>
+    </kbase>
+
+</kmodule>
