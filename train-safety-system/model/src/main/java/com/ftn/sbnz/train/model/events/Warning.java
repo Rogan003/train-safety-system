@@ -11,7 +11,7 @@ import com.ftn.sbnz.train.model.enums.WarningType;
 
 @Role(Role.Type.EVENT)
 @Timestamp("eventTime")
-@Expires("5m")
+@Expires("1m")
 public class Warning implements Serializable {
     private static final long serialVersionUID = 1L;
 
