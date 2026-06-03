@@ -27,7 +27,7 @@ end
 rule "Rule 11b: Clear SIFA warning on any driver activity"
     when
         $w: Warning(type == WarningType.SIFA)
-        $a: DriverActivity(eventTime > $w.getEventTime())
+        $a: DriverActivity(this after $w)
     then
         delete($w);
         System.out.println("[Rule 11b] SIFA cleared by driver activity " + $a.getType());
