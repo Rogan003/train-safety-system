@@ -1,0 +1,68 @@
+package rules.cep;
+
+import com.ftn.sbnz.train.model.facts.TrainStatus;
+import com.ftn.sbnz.train.model.facts.Infrastructure;
+import com.ftn.sbnz.train.model.enums.SifaStatus;
+import com.ftn.sbnz.train.model.enums.WarningType;
+import com.ftn.sbnz.train.model.enums.InteractionType;
+import com.ftn.sbnz.train.model.events.Warning;
+import com.ftn.sbnz.train.model.events.DriverActivity;
+import com.ftn.sbnz.train.model.events.WheelSlipEvent;
+import com.ftn.sbnz.train.model.events.ServiceBrakeCommand;
+import com.ftn.sbnz.train.model.events.EmergencyBrakeCommand;
+
+
+rule "Rule 11: SIFA vigilance — no driver activity in 30s window"
+    when
+        TrainStatus(sifaStatus == SifaStatus.OPERATIONAL, speed > 0)
+        not ( DriverActivity() over window:time(30s) )
+        not Warning(type == WarningType.SIFA)
+    then
+        insert(new Warning(WarningType.SIFA,
+            "Driver inactive for 30 seconds — SIFA vigilance triggered"));
+        System.out.println("[Rule 11] SIFA WARNING — no activity in 30s");
+end
+
+
+rule "Rule 11b: Clear SIFA warning on any driver activity"
+    when
+        $w: Warning(type == WarningType.SIFA)
+        $a: DriverActivity(eventTime > $w.getEventTime())
+    then
+        delete($w);
+        System.out.println("[Rule 11b] SIFA cleared by driver activity " + $a.getType());
+end
+
+
+rule "Rule 12: SIFA escalation — 5s without activity after warning"
+    when
+        $w: Warning(type == WarningType.SIFA)
+        not DriverActivity(this after[0s, 5s] $w)
+        not EmergencyBrakeCommand()
+    then
+        insert(new EmergencyBrakeCommand(
+            "Rule 12: SIFA escalation — no driver response within 5s"));
+        System.out.println("[Rule 12] EMERGENCY BRAKE — SIFA escalation");
+end
+
+
+rule "Rule 13: Overspeed not reacted to within 3s — auto service brake"
+    when
+        $w: Warning(type == WarningType.OVERSPEED)
+        not DriverActivity(type == InteractionType.BRAKE_APPLY, this after[0s, 3s] $w)
+        not ServiceBrakeCommand()
+    then
+        insert(new ServiceBrakeCommand(0.5,
+            "Rule 13: driver did not brake within 3s of overspeed"));
+        System.out.println("[Rule 13] SERVICE BRAKE — driver inaction after overspeed");
+end
+
+
+rule "Rule 14b: Clear wheel-slip warning when slip subsides"
+    when
+        $w: Warning(type == WarningType.WHEEL_SLIP)
+        not ( WheelSlipEvent() over window:time(5s) )
+    then
+        delete($w);
+        System.out.println("[Rule 14b] Wheel-slip warning cleared");
+end
