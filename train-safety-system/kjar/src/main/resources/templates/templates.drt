@@ -13,6 +13,10 @@ import com.ftn.sbnz.train.model.facts.Infrastructure;
 import com.ftn.sbnz.train.model.facts.MovementAuthority;
 import com.ftn.sbnz.train.model.facts.BrakingCurve;
 import com.ftn.sbnz.train.model.facts.Car;
+import com.ftn.sbnz.train.model.events.WheelSlipEvent;
+import com.ftn.sbnz.train.model.events.Warning;
+import com.ftn.sbnz.train.model.events.SandingCommand;
+import com.ftn.sbnz.train.model.enums.WarningType;
 
 template "rule-2-braking-curve"
 
@@ -20,25 +24,26 @@ rule "Rule 2 BrakingCurve for @{trainType} on @{weather}_@{row.rowNumber}"
     no-loop true
     salience 90
 when
-    $t: TrainStatus($v: speed, $pos: position)
-    $infra: Infrastructure($grad: gradient)
+    $t: TrainStatus($v: speed, $pos: position, trainType == "@{trainType}")
+    $infra: Infrastructure($grad: gradient, weather == "@{weather}")
     $ma: MovementAuthority($eoa: eoa)
     $bc: BrakingCurve()
-    $totalMass: Number() from accumulate(
+    $totalMass: Number(doubleValue > 0) from accumulate(
         $c: Car($m: mass),
         sum($m)
     )
-    $brakePct: Number() from accumulate(
+    $sumBrakeMass: Number() from accumulate(
         $c: Car($bp: brakePercentage, $m: mass),
-        sum($bp * $m) / sum($m)
+        sum($bp * $m)
     )
 then
     // a_eff [m/s^2]: brake force * adhesion + gravity component
     double gravityComp = 9.81 * ($grad / 1000.0);
     double aEff = @{brakeRate} * @{mu} + gravityComp;
 
-    if ($brakePct < 80.0) {
-        aEff = aEff * ($brakePct / 80.0);
+    double brakePct = $sumBrakeMass.doubleValue() / $totalMass.doubleValue();
+    if (brakePct < 80.0) {
+        aEff = aEff * (brakePct / 80.0);
     }
 
     double massFactor = 270000.0 / Math.max(1.0, $totalMass.doubleValue());
@@ -74,8 +79,8 @@ when
         $e: WheelSlipEvent() over window:time(2s),
         count($e)
     )
-    $t:     TrainStatus($v: speed, $wv: wheelSpeed, Math.abs($v - $wv) > (1 - @{mu}) * $v)
-    $infra: Infrastructure($mu: adhesion)
+    $t:     TrainStatus($v: speed, $wv: wheelSpeed, Math.abs($v - $wv) > (1 - @{mu}) * $v, trainType == "@{trainType}")
+    $infra: Infrastructure($mu: adhesion, weather == "@{weather}")
     not Warning(type == WarningType.WHEEL_SLIP)
 then
     insert(new Warning(WarningType.WHEEL_SLIP,

@@ -12,7 +12,7 @@ import com.ftn.sbnz.train.model.enums.SifaStatus;
 import com.ftn.sbnz.train.model.enums.InteractionType;
 import com.ftn.sbnz.train.model.events.Warning;
 import com.ftn.sbnz.train.model.events.DriverActivity;
-
+import com.ftn.sbnz.train.model.facts.RouteNode;
 
 query doorsLockedOnCar(Car car)
     (
@@ -36,21 +36,6 @@ query brakeTestPassedOnAllCars(Car car)
         and brakeTestPassedOnAllCars($next;)
     )
 end
-
-
-query couplingIntegrityOK(Coupling coupling)
-    (
-        Coupling(this == coupling, status == CouplingStatus.SECURE,
-                 tension >= minTension, nextCoupling == null)
-    )
-    or
-    (
-        Coupling(this == coupling, status == CouplingStatus.SECURE,
-                 tension >= minTension, $next: nextCoupling != null)
-        and couplingIntegrityOK($next;)
-    )
-end
-
 
 query maReceived()
     $t: TrainStatus($p: position)
@@ -81,21 +66,19 @@ query safeToDepart()
 end
 
 
-query commReady()
-    Infrastructure(gsmrActive == true, rbcHandshake == true)
+query isSafeRouteTree(RouteNode node)
+    (
+        RouteNode(this == node, clear == true, left == null, right == null)
+    )
+    or
+    (
+        RouteNode(this == node, clear == true, $l: left != null)
+        and isSafeRouteTree($l;)
+    )
+    or
+    (
+        RouteNode(this == node, clear == true, $r: right != null)
+        and isSafeRouteTree($r;)
+    )
 end
 
-query couplingIntegrityAll()
-    $first: Coupling(first == true)
-    couplingIntegrityOK($first;)
-end
-
-query noWarnings()
-    not Warning()
-end
-
-query levelTransitionReady()
-    commReady()
-    couplingIntegrityAll()
-    noWarnings()
-end
