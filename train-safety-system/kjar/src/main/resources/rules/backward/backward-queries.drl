@@ -1,0 +1,101 @@
+package rules.backward;
+
+import com.ftn.sbnz.train.model.facts.TrainStatus;
+import com.ftn.sbnz.train.model.facts.Infrastructure;
+import com.ftn.sbnz.train.model.facts.MovementAuthority;
+import com.ftn.sbnz.train.model.facts.Car;
+import com.ftn.sbnz.train.model.facts.Coupling;
+import com.ftn.sbnz.train.model.enums.DoorStatus;
+import com.ftn.sbnz.train.model.enums.BrakeTestStatus;
+import com.ftn.sbnz.train.model.enums.CouplingStatus;
+import com.ftn.sbnz.train.model.enums.SifaStatus;
+import com.ftn.sbnz.train.model.enums.InteractionType;
+import com.ftn.sbnz.train.model.events.Warning;
+import com.ftn.sbnz.train.model.events.DriverActivity;
+
+
+query doorsLockedOnCar(Car car)
+    (
+        Car(this == car, doorStatus == DoorStatus.LOCKED, nextCar == null)
+    )
+    or
+    (
+        Car(this == car, doorStatus == DoorStatus.LOCKED, $next: nextCar != null)
+        and doorsLockedOnCar($next;)
+    )
+end
+
+
+query brakeTestPassedOnAllCars(Car car)
+    (
+        Car(this == car, brakeTest == BrakeTestStatus.PASSED, nextCar == null)
+    )
+    or
+    (
+        Car(this == car, brakeTest == BrakeTestStatus.PASSED, $next: nextCar != null)
+        and brakeTestPassedOnAllCars($next;)
+    )
+end
+
+
+query couplingIntegrityOK(Coupling coupling)
+    (
+        Coupling(this == coupling, status == CouplingStatus.SECURE,
+                 tension >= minTension, nextCoupling == null)
+    )
+    or
+    (
+        Coupling(this == coupling, status == CouplingStatus.SECURE,
+                 tension >= minTension, $next: nextCoupling != null)
+        and couplingIntegrityOK($next;)
+    )
+end
+
+
+query maReceived()
+    $t: TrainStatus($p: position)
+    MovementAuthority(eoa > $p)
+end
+
+query doorsLockedAll()
+    $loco: Car(locomotive == true)
+    doorsLockedOnCar($loco;)
+end
+
+query brakeSystemReady()
+    TrainStatus(brakePressure >= 4.8, compressorOperational == true)
+    $loco: Car(locomotive == true)
+    brakeTestPassedOnAllCars($loco;)
+end
+
+query driverReady()
+    TrainStatus(sifaStatus == SifaStatus.OPERATIONAL)
+    DriverActivity(type == InteractionType.SIFA_RESET)
+end
+
+query safeToDepart()
+    maReceived()
+    doorsLockedAll()
+    brakeSystemReady()
+    driverReady()
+end
+
+
+query commReady()
+    Infrastructure(gsmrActive == true, rbcHandshake == true)
+end
+
+query couplingIntegrityAll()
+    $first: Coupling(first == true)
+    couplingIntegrityOK($first;)
+end
+
+query noWarnings()
+    not Warning()
+end
+
+query levelTransitionReady()
+    commReady()
+    couplingIntegrityAll()
+    noWarnings()
+end

@@ -2,7 +2,6 @@ package rules.accumulate;
 
 import com.ftn.sbnz.train.model.facts.TrainStatus;
 import com.ftn.sbnz.train.model.facts.Infrastructure;
-import com.ftn.sbnz.train.model.facts.BrakingCurve;
 import com.ftn.sbnz.train.model.facts.Car;
 import com.ftn.sbnz.train.model.facts.GradientSegment;
 import com.ftn.sbnz.train.model.enums.WarningType;
@@ -17,7 +16,7 @@ rule "Rule 10: Accumulate average gradient for next 1000m"
         $infra: Infrastructure($currentGrad: gradient)
         $avg: Number(doubleValue != $currentGrad)
             from accumulate(
-                $g: GradientSegment(endPosition > $pos,
+                $g: GradientSegment(endPosition >= $pos,
                                     startPosition < ($pos + 1000),
                                     $val: gradient),
                 average($val)

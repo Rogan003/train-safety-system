@@ -83,10 +83,10 @@ rule "Rule 4b: Clear service brake"
     when
         $bc : BrakingCurve($vsb : vServiceBrake)
         TrainStatus(speed < ($vsb * 0.8))
-        $sbc: ServiceBrakeCommand(reason.matches("^Rule 4*"))
+        $sbc: ServiceBrakeCommand(reason.matches("^Rule 4.*"))
     then
         delete($sbc);
-        System.out.println("[Rule 6b] Speed normal — service brake cleared");
+        System.out.println("[Rule 4b] Speed normal — service brake cleared");
 end
 
 
@@ -136,8 +136,8 @@ end
 
 rule "Rule 7b: Cut traction when any warning persists for more than 20s"
     when
-        $w : Warning($wt: type) over window:time(20s)
-        $t: TrainStatus(tractionActive == true)
+        $w : Warning($wt: type, System.currentTimeMillis() - eventTime.time >= 20000)
+        $t : TrainStatus(tractionActive == true)
     then
         modify($t) { setTractionActive(false), setThrottle(0.0) }
         System.out.println("[Rule 7b] Traction CUT — long-running warning " + $wt);

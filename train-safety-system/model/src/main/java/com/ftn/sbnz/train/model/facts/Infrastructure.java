@@ -9,7 +9,6 @@ public class Infrastructure implements Serializable {
 
     private double gradient;
     private double adhesion;
-    private String weather = "Dry";
     private boolean gsmrActive = true;
     private boolean rbcHandshake = true;
     private List<Balise> balises = new ArrayList<>();
@@ -22,9 +21,6 @@ public class Infrastructure implements Serializable {
 
     public double getAdhesion() { return adhesion; }
     public void setAdhesion(double adhesion) { this.adhesion = adhesion; }
-
-    public String getWeather() { return weather; }
-    public void setWeather(String weather) { this.weather = weather; }
 
     public boolean isGsmrActive() { return gsmrActive; }
     public void setGsmrActive(boolean gsmrActive) { this.gsmrActive = gsmrActive; }

@@ -12,3 +12,6 @@
 
 /train-safety-system/.idea
 /train-safety-system/.junie
+/train-safety-system/.mvn
+
+/train-safety-system/**/target/

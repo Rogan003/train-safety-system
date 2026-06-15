@@ -20,8 +20,8 @@ rule "Rule 2 BrakingCurve for @{trainType} on @{weather}_@{row.rowNumber}"
     no-loop true
     salience 90
 when
-    $t: TrainStatus(trainType == "@{trainType}", $v: speed, $pos: position)
-    $infra: Infrastructure(weather == "@{weather}", $grad: gradient)
+    $t: TrainStatus($v: speed, $pos: position)
+    $infra: Infrastructure($grad: gradient)
     $ma: MovementAuthority($eoa: eoa)
     $bc: BrakingCurve()
     $totalMass: Number() from accumulate(
@@ -74,16 +74,13 @@ when
         $e: WheelSlipEvent() over window:time(2s),
         count($e)
     )
-    $t:     TrainStatus($v: speed, $wv: wheelSpeed)
-    // |V_train - V_wheel| > (1 - mu) * V_train  (proposal §18)
-    eval(Math.abs($v - $wv) > (1 - @{mu}) * $v)
-    $infra: Infrastructure(weather == "@{weather}", $mu: adhesion)
+    $t:     TrainStatus($v: speed, $wv: wheelSpeed, Math.abs($v - $wv) > (1 - @{mu}) * $v)
+    $infra: Infrastructure($mu: adhesion)
     not Warning(type == WarningType.WHEEL_SLIP)
 then
     insert(new Warning(WarningType.WHEEL_SLIP,
         "Repeated wheel slip on @{weather} (mu=@{mu}) — applying sand"));
     insert(new SandingCommand());
-    // Drop adhesion (capped at floor 0.03) so braking curves grow steeper.
     double newMu = Math.max(0.03, $mu * 0.7);
     modify($infra) { setAdhesion(newMu) }
     System.out.println(String.format(
