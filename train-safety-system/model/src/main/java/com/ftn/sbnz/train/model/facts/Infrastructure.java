@@ -10,8 +10,6 @@ public class Infrastructure implements Serializable {
     private double gradient;
     private double adhesion;
     private String weather = "Dry";
-    private boolean gsmrActive = true;
-    private boolean rbcHandshake = true;
     private List<Balise> balises = new ArrayList<>();
     private String currentBaliseId;
 
@@ -26,11 +24,6 @@ public class Infrastructure implements Serializable {
     public String getWeather() { return weather; }
     public void setWeather(String weather) { this.weather = weather; }
 
-    public boolean isGsmrActive() { return gsmrActive; }
-    public void setGsmrActive(boolean gsmrActive) { this.gsmrActive = gsmrActive; }
-
-    public boolean isRbcHandshake() { return rbcHandshake; }
-    public void setRbcHandshake(boolean rbcHandshake) { this.rbcHandshake = rbcHandshake; }
 
     public List<Balise> getBalises() { return balises; }
     public void setBalises(List<Balise> balises) { this.balises = balises; }

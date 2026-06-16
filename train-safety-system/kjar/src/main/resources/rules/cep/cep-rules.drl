@@ -33,6 +33,15 @@ rule "Rule 11b: Clear SIFA warning on any driver activity"
         System.out.println("[Rule 11b] SIFA cleared by driver activity " + $a.getType());
 end
 
+rule "Rule 11c: Clear SIFA warning when train stopped"
+    when
+        $w: Warning(type == WarningType.SIFA)
+        TrainStatus(speed <= 0.01)
+    then
+        delete($w);
+        System.out.println("[Rule 11c] Train stopped — SIFA warning cleared");
+end
+
 
 rule "Rule 12: SIFA escalation — 5s without activity after warning"
     when

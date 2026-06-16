@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DMI — Train Safety Expert System</title>
+  <link rel="stylesheet" href="css/dmi.css">
+</head>
+<body>
+  <header>
+    <h1>Driver Machine Interface — Railway Safety Expert System</h1>
+    <div class="lifecycle">
+      <button id="btn-start"  class="primary">▶ Start</button>
+      <button id="btn-stop">⏸ Stop</button>
+      <button id="btn-reset" class="warn">⟲ Reset</button>
+      <span id="status-badge" class="badge">stopped</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- ===== LEFT COLUMN: DMI gauges + curve ============================ -->
+    <section class="dmi-panel">
+      <div class="speed-block">
+        <div class="speed-circle" id="speed-circle">
+          <div class="speed-num">
+            <span id="speed-val">0</span><span class="unit">km/h</span>
+          </div>
+          <svg class="speed-bezels" viewBox="0 0 200 200">
+            <circle cx="100" cy="100" r="90" stroke="#444" stroke-width="3" fill="none"/>
+            <circle id="speed-arc" cx="100" cy="100" r="90" stroke="#3df" stroke-width="6"
+                    fill="none" stroke-dasharray="0 565.5" transform="rotate(-90 100 100)"/>
+            <circle id="warn-mark"  cx="100" cy="100" r="90" stroke="#f4d000" stroke-width="2"
+                    fill="none" stroke-dasharray="0 565.5" transform="rotate(-90 100 100)"/>
+            <circle id="sbd-mark"   cx="100" cy="100" r="90" stroke="#f08000" stroke-width="2"
+                    fill="none" stroke-dasharray="0 565.5" transform="rotate(-90 100 100)"/>
+            <circle id="ebd-mark"   cx="100" cy="100" r="90" stroke="#e02020" stroke-width="2"
+                    fill="none" stroke-dasharray="0 565.5" transform="rotate(-90 100 100)"/>
+          </svg>
+        </div>
+        <div class="ma-block">
+          <div><span class="lbl">Target speed</span><span id="target-speed">– km/h</span></div>
+          <div><span class="lbl">Distance to EOA</span><span id="dist-eoa">– m</span></div>
+          <div><span class="lbl">EOA</span><span id="eoa-pos">–</span></div>
+          <div><span class="lbl">Position</span><span id="pos">0 m</span></div>
+        </div>
+      </div>
+
+      <div class="curve-card">
+        <h3>Braking-curve supervision (ETCS)</h3>
+        <canvas id="curve-canvas" width="520" height="180"></canvas>
+        <div class="curve-legend">
+          <span class="dot dot-w"></span> W (Warning)
+          <span class="dot dot-sbd"></span> SBD (Service Brake)
+          <span class="dot dot-ebd"></span> EBD (Emergency Brake)
+          <span class="dot dot-v"></span> V<sub>train</sub>
+        </div>
+        <div class="curve-info">
+          <div>W = <span id="vw">–</span> km/h</div>
+          <div>SBD = <span id="vsbd">–</span> km/h</div>
+          <div>EBD = <span id="vebd">–</span> km/h</div>
+          <div>a<sub>eff</sub> = <span id="aeff">–</span> m/s²</div>
+          <div>d<sub>stop</sub> = <span id="dstop">–</span> m</div>
+        </div>
+      </div>
+
+      <div class="env-card">
+        <h3>Environment & profile</h3>
+        <div class="env-grid">
+          <div>μ <span id="mu-val">0.35</span></div>
+          <div>Gradient <span id="grad-val">0‰</span></div>
+          <div>Mass <span id="mass-val">– kg</span></div>
+          <div>Brake % (λ) <span id="lambda-val">– %</span></div>
+          <div>SIFA <span id="sifa-val">OPERATIONAL</span></div>
+          <div>Traction <span id="traction-val">OFF</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== MIDDLE: train view + warnings + controls ================== -->
+    <section class="centre-panel">
+      <div class="warnings-card">
+        <h3>Active warnings & executive commands</h3>
+        <div id="warnings-list" class="warnings-list"><div class="empty">No active warnings</div></div>
+        <div id="cmd-strip" class="cmd-strip">
+          <span class="cmd-pill" id="cmd-em">EMERGENCY BRAKE</span>
+          <span class="cmd-pill" id="cmd-sb">SERVICE BRAKE</span>
+          <span class="cmd-pill" id="cmd-ct">TRACTION CUT</span>
+          <span class="cmd-pill" id="cmd-sand">SANDING</span>
+        </div>
+      </div>
+
+      <div class="track-card">
+        <h3>Track view — train composition + balises</h3>
+        <canvas id="track-canvas" width="700" height="120"></canvas>
+      </div>
+
+      <div class="controls-card">
+        <h3>Driver controls</h3>
+        <label>Throttle <input id="throttle-slider" type="range" min="0" max="1" step="0.05" value="0"></label>
+        <span id="throttle-val">0</span>
+        <label>Brake <input id="brake-slider" type="range" min="0" max="1" step="0.05" value="0"></label>
+        <span id="brake-val">0</span>
+        <div class="action-row">
+          <button id="btn-sifa" class="primary">SIFA reset (alertness)</button>
+          <button id="btn-arm-traction" class="warn">Arm Traction</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== RIGHT: scenarios + checks + logs ========================== -->
+    <section class="right-panel">
+      <div class="checks-card">
+        <h3>Backward-chain checks</h3>
+        <button id="btn-safe" class="primary">Run SafeToDepart (R15)</button>
+        <ul id="safe-results" class="check-list"></ul>
+        <button id="btn-leveltr" class="primary">Run SafeRouteTree (R16)</button>
+        <ul id="lvl-results" class="check-list"></ul>
+      </div>
+
+
+      <div class="log-card">
+        <h3>Event log</h3>
+        <div id="log-list" class="log-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/dmi.js"></script>
+</body>
+</html>

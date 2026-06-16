@@ -2,7 +2,6 @@ package com.ftn.sbnz.train.model.facts;
 
 import java.io.Serializable;
 
-import com.ftn.sbnz.train.model.enums.EtcsMode;
 import com.ftn.sbnz.train.model.enums.SifaStatus;
 
 public class TrainStatus implements Serializable {
@@ -19,14 +18,9 @@ public class TrainStatus implements Serializable {
     private String trainType = "Passenger";
 
     private SifaStatus sifaStatus = SifaStatus.OPERATIONAL;
-    private double odometryReliability = 1.0;
-    private EtcsMode etcsMode = EtcsMode.FS;
 
     private double throttle = 0.0;
     private double brake = 0.0;
-    private boolean sanding = false;
-
-    private long lastInteractionMillis = System.currentTimeMillis();
 
     public TrainStatus() {}
 
@@ -57,11 +51,6 @@ public class TrainStatus implements Serializable {
     public SifaStatus getSifaStatus() { return sifaStatus; }
     public void setSifaStatus(SifaStatus sifaStatus) { this.sifaStatus = sifaStatus; }
 
-    public double getOdometryReliability() { return odometryReliability; }
-    public void setOdometryReliability(double odometryReliability) { this.odometryReliability = odometryReliability; }
-
-    public EtcsMode getEtcsMode() { return etcsMode; }
-    public void setEtcsMode(EtcsMode etcsMode) { this.etcsMode = etcsMode; }
 
     public double getThrottle() { return throttle; }
     public void setThrottle(double throttle) { this.throttle = throttle; }
@@ -69,9 +58,4 @@ public class TrainStatus implements Serializable {
     public double getBrake() { return brake; }
     public void setBrake(double brake) { this.brake = brake; }
 
-    public boolean isSanding() { return sanding; }
-    public void setSanding(boolean sanding) { this.sanding = sanding; }
-
-    public long getLastInteractionMillis() { return lastInteractionMillis; }
-    public void setLastInteractionMillis(long lastInteractionMillis) { this.lastInteractionMillis = lastInteractionMillis; }
 }

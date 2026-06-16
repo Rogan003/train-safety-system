@@ -11,6 +11,7 @@ public class Balise implements Serializable {
     private double newEoa;
     private double newTargetSpeed;
     private boolean consumed = false;
+    private RouteNode linkedNode;
 
     public Balise() {}
 
@@ -19,6 +20,15 @@ public class Balise implements Serializable {
         this.position = position;
         this.newEoa = newEoa;
         this.newTargetSpeed = newTargetSpeed;
+        this.linkedNode = null;
+    }
+    
+    public Balise(String id, double position, double newEoa, double newTargetSpeed, RouteNode linkedNode) {
+        this.id = id;
+        this.position = position;
+        this.newEoa = newEoa;
+        this.newTargetSpeed = newTargetSpeed;
+        this.linkedNode = linkedNode;
     }
 
     public String getId() { return id; }
@@ -35,4 +45,7 @@ public class Balise implements Serializable {
 
     public boolean isConsumed() { return consumed; }
     public void setConsumed(boolean consumed) { this.consumed = consumed; }
+
+    public RouteNode getLinkedNode() { return linkedNode; }
+    public void setLinkedNode(RouteNode linkedNode) { this.linkedNode = linkedNode; }
 }

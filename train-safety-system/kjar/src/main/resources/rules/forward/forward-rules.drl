@@ -12,14 +12,31 @@ import com.ftn.sbnz.train.model.enums.WarningType;
 import com.ftn.sbnz.train.model.events.Warning;
 import com.ftn.sbnz.train.model.events.ServiceBrakeCommand;
 import com.ftn.sbnz.train.model.events.EmergencyBrakeCommand;
+import com.ftn.sbnz.train.model.facts.RouteNode;
 
+query isSafeRouteTree(RouteNode node)
+    (
+        RouteNode(this == node, clear == true, left == null, right == null)
+    )
+    or
+    (
+        RouteNode(this == node, clear == true, $l: left != null)
+        and isSafeRouteTree($l;)
+    )
+    or
+    (
+        RouteNode(this == node, clear == true, $r: right != null)
+        and isSafeRouteTree($r;)
+    )
+end
 
 rule "Rule 1: Antenna reads balise from Infrastructure and updates MA"
     salience 100
     when
         $t: TrainStatus($pos: position)
         $infra: Infrastructure($balises: balises)
-        $b: Balise(consumed == false, position <= $pos) from $balises
+        $b: Balise(consumed == false, position <= $pos, $ln: linkedNode) from $balises
+        ?isSafeRouteTree( $ln ; )
         $ma: MovementAuthority()
     then
         $b.setConsumed(true);
@@ -34,6 +51,18 @@ rule "Rule 1: Antenna reads balise from Infrastructure and updates MA"
         System.out.println("[Rule 1] Balise " + $b.getId()
             + " consumed at pos=" + $pos
             + " -> EOA=" + $b.getNewEoa() + "m, vTarget=" + $b.getNewTargetSpeed() + "km/h");
+end
+
+rule "Rule 1b: Block MA extension if route is unsafe"
+    salience 100
+    when
+        $t: TrainStatus($pos: position)
+        $infra: Infrastructure($balises: balises)
+        $b: Balise(consumed == false, position <= $pos, $ln: linkedNode) from $balises
+        not ?isSafeRouteTree( $ln ; )
+    then
+        $b.setConsumed(true);
+        System.out.println("[Rule 1b] Balise " + $b.getId() + " consumed but route is UNSAFE! MA NOT extended.");
 end
 
 // Rule 2 is templated
@@ -82,7 +111,7 @@ end
 rule "Rule 4b: Clear service brake"
     when
         $bc : BrakingCurve($vsb : vServiceBrake)
-        TrainStatus(speed < ($vsb * 0.8))
+        TrainStatus(speed < ($vsb * 0.9))
         $sbc: ServiceBrakeCommand(reason.matches("^Rule 4.*"))
     then
         delete($sbc);
@@ -100,6 +129,24 @@ then
         String.format("Rule 5: V=%.1f > EBD=%.1f", $v, $veb));
     insert(cmd);
     System.out.println("[Rule 5] EMERGENCY BRAKE — " + cmd.getReason());
+end
+
+rule "Rule 5b: Clear Emergency Brake when train is fully stopped"
+when
+    $t: TrainStatus(speed <= 0.01)
+    $cmd: EmergencyBrakeCommand()
+then
+    delete($cmd);
+    System.out.println("[Rule 5b] Train stopped — emergency brake cleared");
+end
+
+rule "Rule 5c: Cut traction on Emergency Brake Command"
+when
+    EmergencyBrakeCommand()
+    $t: TrainStatus(tractionActive == true)
+then
+    modify($t) { setTractionActive(false), setThrottle(0.0) }
+    System.out.println("[Rule 5c] Traction CUT due to Emergency Brake Command");
 end
 
 
