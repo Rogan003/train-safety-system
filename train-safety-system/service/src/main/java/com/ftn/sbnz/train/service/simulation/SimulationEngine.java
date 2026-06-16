@@ -287,17 +287,16 @@ public class SimulationEngine {
         // Gradient acceleration component (downhill speeds up, uphill slows)
         double gradAccel = -G * (infra.getGradient() / 1000.0); // positive grad = uphill → negative accel
 
-        // Driver throttle: linear engine model up to 0.5 m/s^2 max
-        double throttleAccel = train.isTractionActive() ? (0.5 * train.getThrottle()) : 0.0;
+        double throttleAccel = train.isTractionActive() ? (0.8 * train.getThrottle()) : 0.0;
 
         // Braking: emergency > service brake (auto) > driver brake handle
         double brakeAccel = 0.0;
         if (emergencyActive) {
-            brakeAccel = -aBrake * 1.0;  // 100% brake
+            brakeAccel = -aBrake * 4.0;
         } else if (serviceBrakeActive) {
-            brakeAccel = -aBrake * serviceBrakeIntensity;
+            brakeAccel = -aBrake * (serviceBrakeIntensity * 3.0);
         } else if (train.getBrake() > 0) {
-            brakeAccel = -aBrake * train.getBrake();
+            brakeAccel = -aBrake * (train.getBrake() * 3.0);
         }
 
         double totalAccel = throttleAccel + brakeAccel + gradAccel;
@@ -478,6 +477,20 @@ public class SimulationEngine {
         c.setDoorStatus(DoorStatus.OPEN);
         ksession.update(carHandles.get(idx), c);
         appendLog("Doors randomly OPENED on " + c.getId());
+
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            closeDoor(idx);
+        }, java.util.concurrent.CompletableFuture.delayedExecutor(5, java.util.concurrent.TimeUnit.SECONDS));
+    }
+
+    private synchronized void closeDoor(int idx) {
+        if (idx < 0 || idx >= cars.size()) return;
+        Car c = cars.get(idx);
+        if (c.getDoorStatus() == DoorStatus.OPEN) {
+            c.setDoorStatus(DoorStatus.LOCKED);
+            ksession.update(carHandles.get(idx), c);
+            appendLog("Doors automatically CLOSED on " + c.getId());
+        }
     }
 
     private synchronized void blockRandomRouteNode() {
