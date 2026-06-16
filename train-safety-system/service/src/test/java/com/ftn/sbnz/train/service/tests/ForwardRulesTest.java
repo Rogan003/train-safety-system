@@ -27,6 +27,7 @@ import com.ftn.sbnz.train.model.facts.Car;
 import com.ftn.sbnz.train.model.facts.CriticalSafetyBreach;
 import com.ftn.sbnz.train.model.facts.Infrastructure;
 import com.ftn.sbnz.train.model.facts.MovementAuthority;
+import com.ftn.sbnz.train.model.facts.RouteNode;
 import com.ftn.sbnz.train.model.facts.TrainStatus;
 
 import static org.junit.Assert.assertEquals;
@@ -93,12 +94,14 @@ public class ForwardRulesTest {
         train.setPosition(500.0);
         train.setSpeed(50.0);
 
-        Balise balise = new Balise("B1", 400.0, 2000.0, 80.0);
+        RouteNode safeNode = new RouteNode("TestNode", true);
+        Balise balise = new Balise("B1", 400.0, 2000.0, 80.0, safeNode);
         Infrastructure infra = new Infrastructure();
         infra.getBalises().add(balise);
 
         MovementAuthority ma = new MovementAuthority(1000.0, 60.0);
 
+        kSession.insert(safeNode);
         kSession.insert(train);
         kSession.insert(infra);
         kSession.insert(ma);
@@ -119,12 +122,14 @@ public class ForwardRulesTest {
         train.setPosition(100.0);
         train.setSpeed(50.0);
 
-        Balise balise = new Balise("B-future", 5000.0, 9000.0, 90.0);
+        RouteNode safeNode = new RouteNode("TestNode2", true);
+        Balise balise = new Balise("B-future", 5000.0, 9000.0, 90.0, safeNode);
         Infrastructure infra = new Infrastructure();
         infra.getBalises().add(balise);
 
         MovementAuthority ma = new MovementAuthority(1000.0, 60.0);
 
+        kSession.insert(safeNode);
         kSession.insert(train);
         kSession.insert(infra);
         kSession.insert(ma);
